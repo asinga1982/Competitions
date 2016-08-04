@@ -1,0 +1,31 @@
+xx <- model.matrix(~ User_ID+Prd_mean+Gender+Occupation+City_Category+Stay_In_Current_City_Years+Marital_Status+Prduct1_avg+User_avg+Prd2_avg+Age-1,alltrain)
+
+dtrain <- xgb.DMatrix(data = xx, label = alltrain$Purchase)
+
+bstDMatrix <- xgboost(data = dtrain, max.depth = 10, eta = 1, nthread = 2, nround = 10, objective = "reg:linear")
+
+xgb.importance(model = bstDMatrix)
+
+
+test <- alldata[550069:783667,]
+
+alltest <- alldata[1:550068,]
+alltest <- alltest[-as.numeric(idx),]
+
+yy <- model.matrix(~ User_ID+Prd_mean+Gender+Occupation+City_Category+Stay_In_Current_City_Years+Marital_Status+Prduct1_avg+User_avg+Prd2_avg+Age-1,alltest)
+
+dtrain <- xgb.DMatrix(data = xx, label=alltrain$Purchase)
+dtest <- xgb.DMatrix(data = yy, label=alltest$Purchase)
+
+watchlist <- list(train=dtrain, test=dtest)
+
+bst <- xgb.train(data=dtrain, max.depth=5, eta=.9, nthread = 1, nround=15, watchlist=watchlist, objective = "reg:linear")
+
+zz <- model.matrix(~ User_ID+Prd_mean+Gender+Occupation+City_Category+Stay_In_Current_City_Years+Marital_Status+Prduct1_avg+User_avg+Prd2_avg+Age-1,test)
+
+tt <- xgb.DMatrix(data = zz)
+
+out <- predict(bst, tt)
+write.csv(out, "xgbtrain.csv")
+
+

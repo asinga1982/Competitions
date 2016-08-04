@@ -1,0 +1,38 @@
+train <- read.csv("train.csv", header = T, na.strings = c("",NA))
+test <- read.csv("test.csv", header = T, na.strings = c("",NA))
+test <- test[,-c(1,13)]
+test$Purchase <- 0
+alldata <- rbind(train, test)
+
+#Product Mean
+
+x <- tapply(train$Purchase, train$Product_Category_1, mean)
+x <- data.frame(x)
+x$Product_Category_1 <- c(1:20)
+alldata <- join(alldata, x)
+alldata$Prduct1_avg <- alldata$x
+alldata <- alldata[,-13]
+
+#User Purchase Sum 
+x <- tapply(train$Purchase, train$User_ID, mean)
+x <- data.frame(x)
+x$User_ID <- row.names(x)
+alldata <- join(alldata, x)
+alldata$User_sum <- alldata$x
+alldata <- alldata[,-14]
+
+alldata$Product_Category_1 <- factor(alldata$Product_Category_1)
+qplot(alldata$Prduct1_avg[1:550068], alldata$Purchase[1:550068], col=alldata$Product_Category_1[1:550068], geom="point")
+
+prd10 <- alldata[alldata$Product_Category_1 ==10 & 1:NROW(alldata) <550069,]
+clust <- kmeans(prd10[,12], 5, nstart = 20)
+prd10$label <- as.factor(clust$cluster)
+
+rmodel <- rpart(label~., data=prd10[,-c(9,12)])
+
+x <- tapply(train$Purchase, train$Product_Category_2, mean)
+x <- data.frame(x)
+x$Product_Category_2 <- row.names(x)
+alldata <- join(alldata, x)
+alldata$Prd2_avg <- alldata$x
+alldata <- alldata[,-16]
