@@ -1,0 +1,121 @@
+Reading Data:
+*************
+train <- read.csv("train.csv", header = T, na.strings = c("", NA), stringsAsFactors  = T)
+
+label <- read.csv("train_label.csv", header = T, na.strings = c("", NA), stringsAsFactors  = T)
+
+test <- read.csv("test.csv", header = T, na.strings = c("", NA), stringsAsFactors  = T)
+
+Data Exploration:
+*****************
+
+qplot(status_group, distkm, data=trainfull[trainfull$distkm < 1000,], geom="boxplot")
+
+trainfull$scheme_management[is.na(tnew$scheme_management)] <- "VWC"
+
+Variable Selection:
+*******************
+chisq.test(table(trainfull$$status_group, trainfull$quantity))
+
+
+Important variables: (by chisq.test)
+************************************
+quantity
+quality_group
+payment_type
+management
+waterpoint_type
+source
+waterpoint_type
+extraction_type_class
+scheme_management
+region
+
+
+population
+
+tnew <- trainfull[1:NROW(trainfull)< 59401,c("amount_tsh", 
+"gps_height",
+"num_private", 
+"basin",
+"region",
+"population",
+"scheme_management",
+"extraction_type_class",
+"management",
+"payment_type",
+"quantity",
+"source",
+"waterpoint_type",
+"region_code",
+"district_code",
+"distkm",
+"Age",
+"lgacnt",
+"instakkercnt",
+"fundercnt",
+"status_group")] 
+
+tnew$scheme_management[is.na(tnew$scheme_management)] <- "VWC"
+
+xx <- model.matrix(~.-1, tnew[,-13])
+yy <- tnew$status_group
+
+dtrain <- xgb.DMatrix(data = xx, label= yy)
+
+l <- ifelse(yy == "functional" ,1, 
+	ifelse(yy == "non functional",2,3))
+
+Model:
+******
+
+bstDMatrix <- xgboost(data = dtrain, max.depth = 15, eta = .78, nthread = 2, nround =10, objective = "multi:softmax", num_class = 4, nfold=5)
+
+bstDMatrix <- xgb.cv(data = dtrain, max.depth = 15, eta = .8, nthread = 2, nround = 15, objective = "multi:softmax", num_class = 4, nfold=5)
+
+tdistkm <- sapply(1:nrow(test), function(x) distm(c(test$longitude[x],test$latitude[x]),c(34.93809275, -9.85632177))/1000)
+
+ttnew <- test[,c("amount_tsh", "gps_height",
+                     "num_private", 
+                     "basin",
+                     "region",
+                     "population",
+                     "scheme_management",
+                     "extraction_type_class",
+                     "management",
+                     "payment_type",
+                     "quantity",
+                     "source",
+                     "waterpoint_type",
+                     "distkm",
+		     "Age")] 
+
+txx <- model.matrix(~.-1, ttnew[,-7])
+
+dtest <- xgb.DMatrix(data = txx)
+
+zz <- predict(bstDMatrix, dtest)
+
+out <- data.frame(test$id, zz)
+
+write.csv(out, "simplexgb.csv")
+
+importance(model.rf, type=1)
+
+xgb.importance(colnames(xx), model=bstDMatrix)
+
+New Features:
+*************
+1. Funder count
+cnt <- data.frame(table(trainfull$funder))
+colnames(cnt) <- c("funder", "fundercnt")
+trainfull <- join(trainfull, cnt)
+
+2. Installer count
+cnt <- data.frame(table(trainfull$installer))
+colnames(cnt) <- c("installer", "instakkercnt")
+trainfull <- join(trainfull, cnt)
+
+3. Distance in km using lattitude and longitude
+
+trainfull$distkm <- sapply(1:nrow(train), function(x) distm(c(train$longitude[x],train$latitude[x]),c(train$longitude[1],train$latitude[1]))/1000)
