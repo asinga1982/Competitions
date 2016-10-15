@@ -1,4 +1,4 @@
-### MNIST data set, Hand written Digit Recognition using PCA and XGBoost
+## MNIST data set, Hand written Digit Recognition using PCA and XGBoost
 
 #Problem Statement:
 Here, we need to identify the digit in given images. 
