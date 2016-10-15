@@ -20,23 +20,23 @@ test <- t(test)
 data <- mx.symbol.Variable('data')
 # first convolution layer with 20 5x5 filters, pooling with max 2x2 
 conv1 <- mx.symbol.Convolution(data=data, kernel=c(5,5), num_filter=20)
-tanh1 <- mx.symbol.Activation(data=conv1, act_type="tanh")
-pool1 <- mx.symbol.Pooling(data=tanh1, pool_type="max",
+relu1 <- mx.symbol.Activation(data=conv1, act_type="relu")
+pool1 <- mx.symbol.Pooling(data=relu1, pool_type="max",
                             kernel=c(2,2), stride=c(2,2))
 
 # second convolution layer with 50 5x5 filters, pooling with max 2x2
 conv2 <- mx.symbol.Convolution(data=pool1, kernel=c(5,5), num_filter=50)
-tanh2 <- mx.symbol.Activation(data=conv2, act_type="tanh")
-pool2 <- mx.symbol.Pooling(data=tanh2, pool_type="max",
+relu2 <- mx.symbol.Activation(data=conv2, act_type="relu")
+pool2 <- mx.symbol.Pooling(data=relu2, pool_type="max",
                             kernel=c(2,2), stride=c(2,2))
 
 # first fullconnected layer with 500 neurons
 flatten <- mx.symbol.Flatten(data=pool2)
 fc1 <- mx.symbol.FullyConnected(data=flatten, num_hidden=500)
-tanh3 <- mx.symbol.Activation(data=fc1, act_type="tanh")
+relu3 <- mx.symbol.Activation(data=fc1, act_type="relu")
 
 # second fullconnected layer with 10 neurons (output)
-fc2 <- mx.symbol.FullyConnected(data=tanh3, num_hidden=10)
+fc2 <- mx.symbol.FullyConnected(data=relu3, num_hidden=10)
 # loss
 lenet <- mx.symbol.SoftmaxOutput(data=fc2)
 
