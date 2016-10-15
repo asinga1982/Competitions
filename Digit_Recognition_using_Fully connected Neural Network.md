@@ -13,6 +13,7 @@ test <- data.matrix(test)
 train.x <- train[,-1]  
 train.y <- train[,1]  
 train.x <- t(train.x)  
+test <- t(test)  
 
 # Fully connected 4 layer Neural network  
 data <- mx.symbol.Variable("data")  
