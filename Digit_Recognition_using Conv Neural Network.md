@@ -58,4 +58,4 @@ model <- mx.model.FeedForward.create(lenet, X=train.array, y=train.y,
 preds <- predict(model, test.array)
 pred.label <- max.col(t(preds)) - 1
 
-#Accuracy 98.5%
+#Accuracy 98.5% 
