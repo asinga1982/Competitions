@@ -1,121 +1,117 @@
-Reading Data:
-*************
-train <- read.csv("train.csv", header = T, na.strings = c("", NA), stringsAsFactors  = T)
+setwd("E:/R Directory/Facial")
 
-label <- read.csv("train_label.csv", header = T, na.strings = c("", NA), stringsAsFactors  = T)
+train <- read.csv("training.csv", na.strings = c("", "NA"))
 
-test <- read.csv("test.csv", header = T, na.strings = c("", NA), stringsAsFactors  = T)
-
-Data Exploration:
-*****************
-
-qplot(status_group, distkm, data=trainfull[trainfull$distkm < 1000,], geom="boxplot")
-
-trainfull$scheme_management[is.na(tnew$scheme_management)] <- "VWC"
-
-Variable Selection:
-*******************
-chisq.test(table(trainfull$$status_group, trainfull$quantity))
+img <- train$Image
+img <- as.character(img)
 
 
-Important variables: (by chisq.test)
-************************************
-quantity
-quality_group
-payment_type
-management
-waterpoint_type
-source
-waterpoint_type
-extraction_type_class
-scheme_management
-region
+img <- noquote(unlist(strsplit(img, " ")))
+img <- as.numeric(img)
+
+img1 <- matrix(img, nrow=7049, ncol=96*96, byrow = T)
+train <- train[,-31]
+
+library(mxnet)
+
+img1 <- data.frame(img1)
+
+x <- complete.cases(train)
+n <- colnames(train)
+
+traingood <- train[x,]
+imggood <- img1[x,]
+imggood <- t(imggood/255)
+traingood <- t(traingood)
+
+data <- mx.symbol.Variable('data')
+conv1 <- mx.symbol.Convolution(data=data, kernel=c(5,5), num_filter=20)
+tanh1 <- mx.symbol.Activation(data=conv1, act_type="tanh")
+pool1 <- mx.symbol.Pooling(data=tanh1, pool_type="max",
+                            kernel=c(2,2), stride=c(2,2))
+conv2 <- mx.symbol.Convolution(data=pool1, kernel=c(5,5), num_filter=50)
+tanh2 <- mx.symbol.Activation(data=conv2, act_type="tanh")
+pool2 <- mx.symbol.Pooling(data=tanh2, pool_type="max",
+                           kernel=c(2,2), stride=c(2,2))
+
+flatten <- mx.symbol.Flatten(data=pool2)
+fc1 <- mx.symbol.FullyConnected(data=flatten, num_hidden=500)
+tanh3 <- mx.symbol.Activation(data=fc1, act_type="tanh")
+
+fc2 <- mx.symbol.FullyConnected(data=tanh3, num_hidden=30)
+lro <- mx.symbol.LinearRegressionOutput(fc2)
+
+imggood <- data.matrix(imggood)
+traingood <- data.matrix(traingood)
+
+train.array <- imggood
+dim(train.array) <- c(96, 96, 1, ncol(imggood))
+
+mx.set.seed(0)
+
+devices <- mx.cpu()
+model <- mx.model.FeedForward.create(lro, X=train.array, y=traingood,
+                                     ctx=devices, num.round=30, array.batch.size=100,
+                                     learning.rate=0.0001, momentum=0.9, wd=0.00001,
+                                     eval.metric=mx.metric.rmse,
+                                     epoch.end.callback=mx.callback.log.train.metric(100))
 
 
-population
+test <- read.csv("test.csv", na.strings = c("", "NA"))
+timg <- test$Image
 
-tnew <- trainfull[1:NROW(trainfull)< 59401,c("amount_tsh", 
-"gps_height",
-"num_private", 
-"basin",
-"region",
-"population",
-"scheme_management",
-"extraction_type_class",
-"management",
-"payment_type",
-"quantity",
-"source",
-"waterpoint_type",
-"region_code",
-"district_code",
-"distkm",
-"Age",
-"lgacnt",
-"instakkercnt",
-"fundercnt",
-"status_group")] 
+timg <- as.character(timg)
+timg <- noquote(unlist(strsplit(timg, " ")))
+timg <- as.numeric(timg)
+timg1 <- matrix(timg, nrow=1783, ncol=96*96, byrow = T)
+timg1 <- data.frame(timg1)
+imgpred <- t(timg1/255)
+test.array <- imgpred
+dim(test.array) <- c(96, 96, 1, ncol(imgpred))
+pred <- (predict(model, test.array))
 
-tnew$scheme_management[is.na(tnew$scheme_management)] <- "VWC"
+p <- as.numeric(pred)
 
-xx <- model.matrix(~.-1, tnew[,-13])
-yy <- tnew$status_group
+a <- as.data.frame(matrix(nrow = 53490, ncol = 2))
+x <- 0
+for(i in 1:1783){
+	for(j in 1:30){
+		x <- x+1
+		a[x,1] <- i
+		a[x,2] <- n[j]		
 
-dtrain <- xgb.DMatrix(data = xx, label= yy)
+}}
 
-l <- ifelse(yy == "functional" ,1, 
-	ifelse(yy == "non functional",2,3))
+a$Location <- p
 
-Model:
-******
+ref <- read.csv("ref.csv")
 
-bstDMatrix <- xgboost(data = dtrain, max.depth = 15, eta = .78, nthread = 2, nround =10, objective = "multi:softmax", num_class = 4, nfold=5)
+colnames(a) <- c("ImageId", "FeatureName", 'Location')
 
-bstDMatrix <- xgb.cv(data = dtrain, max.depth = 15, eta = .8, nthread = 2, nround = 15, objective = "multi:softmax", num_class = 4, nfold=5)
+ref <- ref[,-4]
 
-tdistkm <- sapply(1:nrow(test), function(x) distm(c(test$longitude[x],test$latitude[x]),c(34.93809275, -9.85632177))/1000)
+library(plyr)
+out <- join(ref,a)
 
-ttnew <- test[,c("amount_tsh", "gps_height",
-                     "num_private", 
-                     "basin",
-                     "region",
-                     "population",
-                     "scheme_management",
-                     "extraction_type_class",
-                     "management",
-                     "payment_type",
-                     "quantity",
-                     "source",
-                     "waterpoint_type",
-                     "distkm",
-		     "Age")] 
+finalout <- out[,c(1,4)]
+write.csv(finalout,"sub1.csv",row.names = F)
 
-txx <- model.matrix(~.-1, ttnew[,-7])
 
-dtest <- xgb.DMatrix(data = txx)
+mirrimg <- function(y){
 
-zz <- predict(bstDMatrix, dtest)
+y <- matrix(y, nrow=96, ncol=96,byrow=T)
+z <- matrix(nrow=96, ncol=96)
 
-out <- data.frame(test$id, zz)
+z[,1:48] <- y[,49:96]
+z[,49:96] <- y[1:48]
+z1 <- as.vector(t(z))
+z1
+}
 
-write.csv(out, "simplexgb.csv")
+j <- t(imggood)
+newimg <- matrix(nrow=2140, ncol=9216)
 
-importance(model.rf, type=1)
 
-xgb.importance(colnames(xx), model=bstDMatrix)
-
-New Features:
-*************
-1. Funder count
-cnt <- data.frame(table(trainfull$funder))
-colnames(cnt) <- c("funder", "fundercnt")
-trainfull <- join(trainfull, cnt)
-
-2. Installer count
-cnt <- data.frame(table(trainfull$installer))
-colnames(cnt) <- c("installer", "instakkercnt")
-trainfull <- join(trainfull, cnt)
-
-3. Distance in km using lattitude and longitude
-
-trainfull$distkm <- sapply(1:nrow(train), function(x) distm(c(train$longitude[x],train$latitude[x]),c(train$longitude[1],train$latitude[1]))/1000)
+for(i in 1:2140){
+newimg[i,] <- mirrimg(j[i,])
+}
