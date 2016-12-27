@@ -1,0 +1,227 @@
+spark-shell --master local[8] --driver-memory 2g --executor-memory 1g
+
+import org.apache.spark.ml.feature._
+import org.apache.spark.ml.regression.{RandomForestRegressionModel, RandomForestRegressor}
+import org.apache.spark.ml.evaluation.RegressionEvaluator
+import org.apache.spark.ml.regression.{GBTRegressionModel, GBTRegressor}
+import org.apache.spark.ml.tuning.{CrossValidator, ParamGridBuilder}
+import org.apache.spark.ml.Pipeline
+import org.apache.spark.ml.param.ParamMap
+import org.apache.spark.ml.tuning.CrossValidatorModel
+import org.apache.spark.ml.regression.LinearRegression
+import org.apache.spark.ml.regression._
+import org.apache.spark.ml.regression.GeneralizedLinearRegression
+
+
+val dfread = spark.read.
+        format("com.databricks.spark.csv").
+        option("header", "true").
+        option("inferSchema", "true").
+        load("t1.csv")
+
+
+val dfread = spark.read.
+        format("com.databricks.spark.csv").
+        option("header", "true").
+        option("inferSchema", "true").
+        load("COMBINED.csv")
+
+//val df_newfeat = dfread.withColumn("Rate1", dfread("SalePrice")/dfread("LotArea")).withColumn("Rate2", dfread("SalePrice")/dfread("GrLivArea")).withColumn("coveredArea", dfread("TotalBsmtSF") + dfread("GrLivArea") + dfread("GarageArea")).withColumn("SubClass",dfread.col("MSSubClass").cast("string")).withColumn("YEARSOLD",dfread.col("YrSold").cast("string"))
+
+val df_newfeat = dfread.withColumn("coveredArea", dfread("TotalBsmtSF") + dfread("GrLivArea") + dfread("GarageArea")).withColumn("SubClass",dfread.col("MSSubClass").cast("string")).withColumn("YEARSOLD",dfread.col("YrSold").cast("string")).withColumn("NoCars",dfread.col("GarageCars").cast("string"))
+
+val df_newdf1= df_newfeat.withColumn("Loading", (df_newfeat("LotArea") - df_newfeat("coveredArea"))/df_newfeat("coveredArea"))
+
+//Log Trans
+
+val df_newdf2 = df_newdf1.withColumn("logprice", log1p(df_newdf1("SalePrice"))).withColumn("logcoveredArea", log1p(df_newdf1("coveredArea"))).withColumn("logGrLivArea", log1p(df_newdf1("GrLivArea"))).withColumn("logYearBuilt", log1p(df_newdf1("YearBuilt"))).withColumn("logTotalBsmtSF", log1p(df_newdf1("TotalBsmtSF"))).withColumn("logLotArea", log1p(df_newdf1("LotArea"))).withColumn("logGarageArea", log1p(df_newdf1("GarageArea"))).withColumn("logLotFrontage", log1p(df_newdf1("LotFrontage"))).withColumn("logLoading", log1p(df_newdf1("Loading"))).withColumn("logWoodDeckSF", log1p(df_newdf1("WoodDeckSF")))
+
+
+val finaldf = df_newdf2.drop("_c0").drop("Id").drop("MSSubClass").drop("X1stFlrSF").drop("X2ndFlrSF").drop("BsmtFinSF1").drop("BsmtFinSF2").drop("BsmtUnfSF").drop("MasVnrArea").drop("OpenPorchSF").drop("EnclosedPorch").drop("Utilities").drop("PoolQC").drop("MoSold").drop("ScreenPorch").drop("X3SsnPorch").drop("EnclosedPorch").drop("LandSlope").drop("X").drop("Rate")
+
+// val fdf = finaldf.drop("Rate1").drop("Rate2")
+
+//R Formula
+val formula = new RFormula().
+                   setFormula("SalePrice~.").
+                   setFeaturesCol("features1").
+                   setLabelCol("label")
+
+val formula = new RFormula().
+                   setFormula("logprice~logcoveredArea+qualKQ+logGrLivArea+NoCars+logYearBuilt+logTotalBsmtSF+ExterQual+KQ+logLotArea+logGarageArea+BsmtQual+TotRmsAbvGrd+logLotFrontage+YearRemodAdd+FullBath+Neighborhood+logLoading+OverallQual+logWoodDeckSF+Fireplaces+OverallCond+GarageType+BsmtExposure+YEARSOLD+Recent+PavedDrive+GarageQual+Functional+SubClass").
+                   setFeaturesCol("features1").
+                   setLabelCol("label")
+
+//
+val formula = new RFormula().
+                   setFormula("logprice~logcoveredArea+qualKQ+logGrLivArea+GarageCars+logYearBuilt+logTotalBsmtSF+ExterQual+KQ+logLotArea+logGarageArea+BsmtQual+TotRmsAbvGrd+logLotFrontage+YearRemodAdd+FullBath+Neighborhood+logLoading+OverallQual+logWoodDeckSF+Fireplaces+OverallCond+GarageType+BsmtExposure+SubClass+MSZoning+GarageQual+LowQualFinSF").
+                   setFeaturesCol("features1").
+                   setLabelCol("label")
+
+val formula = new RFormula().
+                   setFormula("SalePrice~coveredArea+qualKQ+GrLivArea+GarageCars+TotalBsmtSF+ExterQual+KQ+LotArea+GarageArea+BsmtQual+TotRmsAbvGrd+LotFrontage+YearRemodAdd+FullBath+Neighborhood+Loading+OverallQual+WoodDeckSF+Fireplaces+OverallCond+GarageType+BsmtExposure+SubClass+MSZoning+GarageQual+LowQualFinSF+YEARSOLD+Recent+PavedDrive+GarageQual+Functional").
+                   setFeaturesCol("features1").
+                   setLabelCol("label")
+
+
+val newdf = formula.fit(finaldf).transform(finaldf)
+
+//Scale Features
+val scaler = new MinMaxScaler().setInputCol("features1").setOutputCol("features")
+val scaled = scaler.fit(newdf).transform(newdf)
+
+//Split Test and Training Data
+scaled.createOrReplaceTempView("NEWDF")
+//newdf.createOrReplaceTempView("NEWDF")
+
+
+val tr = spark.sql("SELECT * FROM NEWDF where SalePrice > 0 and GrLivArea < 4000 and SalePrice < 700000")
+val test = spark.sql("SELECT * FROM NEWDF where SalePrice == 0")
+val split = tr.randomSplit(Array(0.8, 0.2))
+
+//val split = tr.randomSplit(Array(0.9, 0.1))
+val (trainingData, testData) = (split(0), split(1))
+
+// RF Model
+val rf = new RandomForestRegressor().setLabelCol("label").setFeaturesCol("features1").setNumTrees(500)
+val rfModel = rf.fit(trainingData)
+val pred = rfModel.transform(trainingData)
+
+rfModel.summary.asInstanceOf[RandomForestRegressionSummary].rootMeanSquaredError
+
+//GBT
+val gbt = new GBTRegressor().setLabelCol("label").setFeaturesCol("features").setMaxIter(200)
+val gbtModel = gbt.fit(trainingData)
+val pred = gbtModel.transform(trainingData)
+
+//Linear Model
+val lr = new LinearRegression().setMaxIter(50).setRegParam(0.001).setElasticNetParam(0.8)
+val lrModel = lr.fit(trainingData)
+val pred = lrModel.transform(trainingData)
+
+lrModel.summary.asInstanceOf[LinearRegressionSummary].r2
+lrModel.summary.asInstanceOf[LinearRegressionSummary].rootMeanSquaredError
+println(s"Coefficients: ${lrModel.coefficients} Intercept: ${lrModel.intercept}")
+
+//GLM
+val glr = new GeneralizedLinearRegression().setFamily("gaussian").setLink("identity").setMaxIter(200).setRegParam(0.05)
+val glrModel = glr.fit(trainingData)
+val pred = glrModel.transform(trainingData)
+
+
+//val evaluator2 = new RegressionEvaluator().setLabelCol("logprice").setPredictionCol("prediction").setMetricName("rmse")
+//val rmse2 = evaluator2.evaluate(pred)
+
+val newpred = pred.withColumn("logpred", log(pred("prediction"))).withColumn("loglabel", log(pred("label")))
+
+val evaluator1 = new RegressionEvaluator().setLabelCol("loglabel").setPredictionCol("logpred").setMetricName("rmse")
+val rmse = evaluator1.evaluate(newpred)
+
+val tpred = rfModel.transform(testData)
+val tpred = gbtModel.transform(testData)
+val tpred = lrModel.transform(testData)
+val tpred = glrModel.transform(testData)
+
+
+val newtpred = tpred.withColumn("logpred", log(tpred("prediction"))).withColumn("loglabel", log(tpred("label")))
+val trmse = evaluator1.evaluate(newtpred)
+
+//Making Predictions
+val tpred = rfModel.transform(test)
+tpred.select("prediction").write.format("com.databricks.spark.csv").option("header", "true").save("RFM_Pred3.csv")
+
+//Feature Importance
+rfModel.featureImportances
+
+//To get Feature Names
+val meta = newdf.select($"features").schema.fields.head.metadata.getMetadata("ml_attr").getMetadata("attrs")
+
+//Test Data Processing
+val tdfread = spark.read.
+        format("com.databricks.spark.csv").
+        option("header", "true").
+        option("inferSchema", "true").
+        load("test_clean.csv")
+
+
+val tdf_newfeat = tdfread.withColumn("coveredArea", tdfread("TotalBsmtSF") + tdfread("GrLivArea") + tdfread("GarageArea")).withColumn("SubClass",tdfread.col("MSSubClass").cast("string")).withColumn("SalePrice", tdfread("TotalBsmtSF"))
+
+val tdf_newdf1= tdf_newfeat.withColumn("Loading", (tdf_newfeat("LotArea") - tdf_newfeat("coveredArea"))/tdf_newfeat("coveredArea"))
+
+val tfinaldf = tdf_newdf1.drop("_c0").drop("Id").drop("MSSubClass").drop("X1stFlrSF").drop("X2ndFlrSF").drop("BsmtFinSF1").drop("BsmtFinSF2").drop("BsmtUnfSF").drop("MasVnrArea").drop("OpenPorchSF").drop("EnclosedPorch")
+
+val tnewdf = formula.fit(tfinaldf).transform(tfinaldf)
+
+val t1pred = rfModel.transform(tnewdf)
+
+val predInt = tpred.withColumn("IntPred",tpred.col("prediction").cast("integer"))
+
+predInt.select("IntPred").write.format("com.databricks.spark.csv").option("header", "true").save("OUT/RFM_Pred.csv")
+	
+.rdd.map(x=>x.mkString(","))
+
+val newtpred = tpred.withColumn("Actual", exp(tpred("prediction")) )
+
+//Cross Validation:
+//setNumTrees(200).setMaxDepth(10).setMaxBins(20).setMinInstancesPerNode(5) 
+
+val paramGrid = new ParamGridBuilder().addGrid(rf.numTrees, Array(200, 500)).addGrid(rf.maxDepth, Array(8, 11, 15)).addGrid(rf.maxBins, Array(16, 32, 40)).build()
+
+val paramGrid = new ParamGridBuilder().addGrid(lr.elasticNetParam, Array(0.01, 0.1, 0.5, 0.8)).addGrid(lr.maxIter, Array(50, 100, 200,500)).addGrid(lr.regParam, Array(0.001, 0.01, 0.1, 0.5)).build()
+
+
+val cv = new CrossValidator().setEstimator(rf).setEvaluator(new RegressionEvaluator).setEstimatorParamMaps(paramGrid).setNumFolds(6) 
+
+val cvModel = cv.fit(trainingData)
+
+val pred = cvModel.transform(testData)
+
+cvModel.bestModel.extractParamMap().toString()
+
+Missing Data:
+tdata <- read.csv("test.csv", header = T, na.strings = c("", "NA"), stringsAsFactors = F)
+tdata$MiscFeature[is.na(tdata$MiscFeature)] <- "Other"
+tdata$Fence[is.na(tdata$Fence)] <- "Other"
+tdata$PoolQC[is.na(tdata$PoolQC)] <- "Other"
+tdata$GarageCond[is.na(tdata$GarageCond)] <- "Other"
+tdata$GarageQual[is.na(tdata$GarageQual)] <- "Other"
+tdata$GarageCars[is.na(tdata$GarageCars)] <- 2
+tdata$GarageArea[is.na(tdata$GarageArea)] <- 480
+tdata$SaleType[is.na(tdata$SaleType)] <- "WD"
+tdata$GarageFinish[is.na(tdata$GarageFinish)] <- "Other"
+tdata$Utilities[is.na(tdata$Utilities)] <- "AllPub"
+tdata <- tdata[,-7]
+tdata$MSZoning[is.na(tdata$MSZoning)] <- "RL"
+tdata$Exterior1st[is.na(tdata$Exterior1st)] <- "VinylSd"
+tdata$Exterior2nd[is.na(tdata$Exterior2nd)] <- "VinylSd"
+tdata$MasVnrType[is.na(tdata$MasVnrType)] <- "None"
+tdata$MasVnrArea[is.na(tdata$MasVnrArea)] <- 0
+tdata$BsmtCond[is.na(tdata$BsmtCond)] <- "Other"
+tdata$BsmtQual[is.na(tdata$BsmtQual)] <- "Other"
+tdata$BsmtExposure[is.na(tdata$BsmtExposure)] <- "Other"
+tdata$BsmtFinType1[is.na(tdata$BsmtFinType1)] <- "Other"
+tdata$BsmtFinType2[is.na(tdata$BsmtFinType2)] <- "Other"
+tdata$BsmtFinSF1[is.na(tdata$BsmtFinSF1)] <- 383.5
+tdata$BsmtFinSF2[is.na(tdata$BsmtFinSF2)] <- 0
+tdata$GarageType[is.na(tdata$GarageType)] <- "Other"
+tdata$BsmtUnfSF[is.na(tdata$BsmtUnfSF)] <- 0
+tdata$TotalBsmtSF[is.na(tdata$TotalBsmtSF)] <- 400
+tdata$FireplaceQu[is.na(tdata$FireplaceQu)] <- "Other"
+tdata$Functional[is.na(tdata$Functional)] <- "Typ"
+tdata$BsmtFullBath[is.na(tdata$BsmtFullBath)] <- 0
+tdata$BsmtHalfBath[is.na(tdata$BsmtHalfBath)] <- 0
+tdata$GarageYrBlt[is.na(tdata$GarageYrBlt)] <- tdata$YearBuilt[is.na(tdata$GarageYrBlt)] 
+tdata$KitchenQual[is.na(tdata$KitchenQual)] <- "Fa"
+tdata$LotFrontage[is.na(tdata$LotFrontage)] <- tdata$LotArea[is.na(tdata$LotFrontage)]/130
+
+implicit class BestParamMapCrossValidatorModel(cvModel1:CrossValidatorModel) {
+  def bestEstimatorParamMap: ParamMap = {
+    cvModel1.getEstimatorParamMaps
+           .zip(cvModel1.avgMetrics)
+           .maxBy(_._2)
+           ._1
+  }
+}
+
+
+
