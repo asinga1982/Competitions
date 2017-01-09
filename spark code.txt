@@ -178,41 +178,7 @@ val pred = cvModel.transform(testData)
 
 cvModel.bestModel.extractParamMap().toString()
 
-Missing Data:
-tdata <- read.csv("test.csv", header = T, na.strings = c("", "NA"), stringsAsFactors = F)
-tdata$MiscFeature[is.na(tdata$MiscFeature)] <- "Other"
-tdata$Fence[is.na(tdata$Fence)] <- "Other"
-tdata$PoolQC[is.na(tdata$PoolQC)] <- "Other"
-tdata$GarageCond[is.na(tdata$GarageCond)] <- "Other"
-tdata$GarageQual[is.na(tdata$GarageQual)] <- "Other"
-tdata$GarageCars[is.na(tdata$GarageCars)] <- 2
-tdata$GarageArea[is.na(tdata$GarageArea)] <- 480
-tdata$SaleType[is.na(tdata$SaleType)] <- "WD"
-tdata$GarageFinish[is.na(tdata$GarageFinish)] <- "Other"
-tdata$Utilities[is.na(tdata$Utilities)] <- "AllPub"
-tdata <- tdata[,-7]
-tdata$MSZoning[is.na(tdata$MSZoning)] <- "RL"
-tdata$Exterior1st[is.na(tdata$Exterior1st)] <- "VinylSd"
-tdata$Exterior2nd[is.na(tdata$Exterior2nd)] <- "VinylSd"
-tdata$MasVnrType[is.na(tdata$MasVnrType)] <- "None"
-tdata$MasVnrArea[is.na(tdata$MasVnrArea)] <- 0
-tdata$BsmtCond[is.na(tdata$BsmtCond)] <- "Other"
-tdata$BsmtQual[is.na(tdata$BsmtQual)] <- "Other"
-tdata$BsmtExposure[is.na(tdata$BsmtExposure)] <- "Other"
-tdata$BsmtFinType1[is.na(tdata$BsmtFinType1)] <- "Other"
-tdata$BsmtFinType2[is.na(tdata$BsmtFinType2)] <- "Other"
-tdata$BsmtFinSF1[is.na(tdata$BsmtFinSF1)] <- 383.5
-tdata$BsmtFinSF2[is.na(tdata$BsmtFinSF2)] <- 0
-tdata$GarageType[is.na(tdata$GarageType)] <- "Other"
-tdata$BsmtUnfSF[is.na(tdata$BsmtUnfSF)] <- 0
-tdata$TotalBsmtSF[is.na(tdata$TotalBsmtSF)] <- 400
-tdata$FireplaceQu[is.na(tdata$FireplaceQu)] <- "Other"
-tdata$Functional[is.na(tdata$Functional)] <- "Typ"
-tdata$BsmtFullBath[is.na(tdata$BsmtFullBath)] <- 0
-tdata$BsmtHalfBath[is.na(tdata$BsmtHalfBath)] <- 0
-tdata$GarageYrBlt[is.na(tdata$GarageYrBlt)] <- tdata$YearBuilt[is.na(tdata$GarageYrBlt)] 
-tdata$KitchenQual[is.na(tdata$KitchenQual)] <- "Fa"
-tdata$LotFrontage[is.na(tdata$LotFrontage)] <- tdata$LotArea[is.na(tdata$LotFrontage)]/130
+
 
 implicit class BestParamMapCrossValidatorModel(cvModel1:CrossValidatorModel) {
   def bestEstimatorParamMap: ParamMap = {
