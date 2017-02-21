@@ -19,7 +19,6 @@ val dfread = spark.read.
         option("inferSchema", "true").
         load("t1.csv")
 
-
 val dfread = spark.read.
         format("com.databricks.spark.csv").
         option("header", "true").
