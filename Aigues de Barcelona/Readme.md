@@ -15,9 +15,9 @@ The largest water supplier of Barcelona wants to leverage machine learning to ef
 There was a close correlation between new contracts, ended contracts and number of contacts. I had 2 choices:
 1.	To predict new contacts and ended contacts using time series and then predict contacts for them
 2.	Directly predict contacts using time series forecasting
-### I used the second approach.
+##### I used the second approach.
  
-## Predicting contacts:
+## Predicting Contacts:
 I used top down approach as the there was only 1 level involved. I predicted the contacts at day level using Exponential smoothing state space model with Box-Cox transformation, ARMA errors, Trend and Seasonal components (tbats) using weekly, quarterly and yearly seasonality. To accommodate the trends at type level, I found the average contribution by type for 2016 and for all years (some types had different trends in recent years). Using separate contribution percentages by types and for weekdays and weekends, I split the overall forecast into detailed forecast.  
 
 ## Predicting Resolution:  
@@ -25,9 +25,7 @@ Resolutions had 2 levels (category and subject), hence top down approach was not
 
 Prediction from this resulted in some negative values, esp. for the weekend. I replaced them with respective mean from 2016 weekend data.   
 
-
 ## Code Files:  
-
 R_Notebook.R & Analysis_1.R -> Analysis files  
 Modelling.R ->  For predicting contacts  
 Resolution_Analysis.R -> For analyzing Resolutions  
