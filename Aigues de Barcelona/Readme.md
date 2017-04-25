@@ -4,7 +4,7 @@ This model scored 62.91 on Private Leaderboard and ranked #3.
 
 ## Prerequisites:
 
-R version 3.3.3
+R version 3.3.3  
 R Packages: plyr, forecast, hts, lubridate, reshape, reshape2, ggplot2
 
 ## Problem Statement:
