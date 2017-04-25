@@ -31,3 +31,10 @@ Modelling.R ->  For predicting contacts
 Resolution_Analysis.R -> For analyzing Resolutions  
 Resolution_Modelling.R -> Modelling tries for Resolution (not used in final submission)  
 resolutions hts.R -> For predicting Resolutions  
+
+### To reproduce the output, perform the following steps:
+1. Copy all the files in a directory and point R to Train folder inside Train_BG1IL20.
+2. Rename files in test folder as Contacts2017_test.csv and Resolution2017_test.csv to Train folder.
+3. Execute files Modelling.R and resolutions hts.R for predicting contacts and resolutions  
+
+Output will be created as Contacts.csv and Resolution.csv in Train folder
