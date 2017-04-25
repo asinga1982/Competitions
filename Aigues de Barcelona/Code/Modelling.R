@@ -32,9 +32,9 @@ fc2 <- forecast(fit_tbats, 74)
 #Calculate group contributions
 precont_byDayType.2016 <- precont_byDayType[precont_byDayType$Date > "2015-12-31",]
 
-aggregate(precont_byDayType.2016$Contacts, by=list(precont_byDayType.2016$Type, 
-                                              precont_byDayType.2016$weekend),
-          FUN=mean)
+#aggregate(precont_byDayType.2016$Contacts, by=list(precont_byDayType.2016$Type, 
+#                                              precont_byDayType.2016$weekend),
+#          FUN=mean)
 
 #Generate output dataset
 
