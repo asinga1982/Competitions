@@ -2,7 +2,7 @@
 
 This model scored 62.91 on Private Leaderboard and ranked #3.
 
-Prerequisites:
+## Prerequisites:
 
 R version 3.3.3
 R Packages: plyr, forecast, hts, lubridate, reshape, reshape2, ggplot2,   
@@ -17,15 +17,15 @@ There was a close correlation between new contracts, ended contracts and number 
 2.	Directly predict contacts using time series forecasting
 I used the second approach.
  
-Predicting contacts:
+## Predicting contacts:
 I used top down approach as the there was only 1 level involved. I predicted the contacts at day level using Exponential smoothing state space model with Box-Cox transformation, ARMA errors, Trend and Seasonal components (tbats) using weekly, quarterly and yearly seasonality. To accommodate the trends at type level, I found the average contribution by type for 2016 and for all years (some types had different trends in recent years). Using separate contribution percentages by types and for weekdays and weekends, I split the overall forecast into detailed forecast.  
 
-Predicting Resolution:  
+## Predicting Resolution:  
 Resolutions had 2 levels (category and subject), hence top down approach was not suitable. Also, breaking the high-level forecast into 2 levels would be quite error prone so I selected hierarchical time series modeling for this. I used tbats() for each subject to account for multiple seasonality on the data. Most of the effort was in preparing data in the format accepted by hierarchical time series modeling function, hts(). I used only last 3 years of data (optimized after first submission) as that was having lesser missing values and avoided the spiked 2013 data. Combining of low level forecast with top level was done using LU decomposition algorithm.       
 Prediction from this resulted in some negative values, esp. for the weekend. I replaced them with respective mean from 2016 weekend data.   
 
 
-# Code Files:  
+## Code Files:  
 
 R_Notebook.R & Analysis_1.R -> Analysis files  
 Modelling.R ->  For predicting contacts  
