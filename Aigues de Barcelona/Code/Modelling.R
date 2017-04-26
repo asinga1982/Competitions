@@ -102,7 +102,7 @@ zz1$CONTACT.TYPE[which(zz1$CONTACT.TYPE=="Web.Input")] <- "Web - Input"
 a11 <- strptime(as.character(zz1$Date), "%Y-%m-%d")
 zz1$Date <- format(a11, "%Y-%m-%d")
 
-contact.test <- read.csv("Contacts2017_test.csv", header = T)
+contact.test <- read.csv("Contacts2017_test.csv", header = T,stringsAsFactors = F)
 
 contact.test <- contact.test[,-3]
 
