@@ -26,7 +26,8 @@ precont_byDayType$Date <- as.Date(precont_byDayType$Date, format="%Y-%m-%d")
 y <- msts(precont_byDay$Contacts, seasonal.periods=c(6,7,60,90, 365.25))
 
 #Using TBATS (this model used)
-fit_tbats <- tbats(y,seasonal.periods=c(6,7,90, 365.25))
+set.seed(10)
+fit_tbats <- tbats(y,seasonal.periods=c(6,7,60,90, 365.25))
 fc2 <- forecast(fit_tbats, 74)
 
 #Calculate group contributions
@@ -37,7 +38,6 @@ precont_byDayType.2016 <- precont_byDayType[precont_byDayType$Date > "2015-12-31
 #          FUN=mean)
 
 #Generate output dataset
-
 library(lubridate)
 library(plyr)
 library(reshape2)
@@ -112,4 +112,3 @@ final.ContactOut <- final.ContactOut[,-c(1,2)]
 
 #Write to Output for submission
 write.csv(final.ContactOut,"Contacts.csv", row.names = F)
-
